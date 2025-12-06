@@ -2,3 +2,7 @@
 *__pycache__
 .coverage
 *.pdf
+/data
+/mlruns
+mlflow.db
+best_model.onnx.data
