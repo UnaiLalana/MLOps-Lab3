@@ -8,7 +8,7 @@ class ONNXClassifier:
         self.session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
         self.input_name = self.session.get_inputs()[0].name
 
-        with open(labels_path, "r") as f:
+        with open(labels_path, "r", encoding="utf-8") as f:
             self.labels = json.load(f)
 
         self.preprocess_tf = transforms.Compose([
