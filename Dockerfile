@@ -1,28 +1,20 @@
-# Base image with Python 3.13
-FROM python:3.13-slim AS base
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV UV_SYSTEM_PYTHON=1
-
+FROM python:3.13-slim AS runtime
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Dependencias del sistema
+RUN apt-get update && apt-get install -y \
     build-essential \
     libjpeg-dev \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Builder stage: install Python dependencies
-FROM base AS builder
+# Copia archivos de dependencias
 COPY pyproject.toml uv.lock* ./
-RUN pip install --prefix=/install --no-cache-dir uv
-RUN python -m uv pip install --prefix=/install --no-cache-dir .
 
-# Runtime stage: copy only what's needed
-FROM base AS runtime
-COPY --from=builder /install /usr/local
+# Instala las dependencias
+RUN pip install --no-cache-dir .
+
+# Copia el código de la app
 COPY api ./api
 COPY mylib ./mylib
 COPY templates ./templates
