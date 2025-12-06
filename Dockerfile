@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM base AS builder
 COPY pyproject.toml uv.lock* ./
 RUN pip install --prefix=/install --no-cache-dir uv
-RUN uv pip install --prefix=/install --no-cache-dir .
+RUN python -m uv pip install --prefix=/install --no-cache-dir .
 
 # Runtime stage: copy only what's needed
 FROM base AS runtime
