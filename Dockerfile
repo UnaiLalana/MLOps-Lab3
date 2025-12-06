@@ -1,25 +1,42 @@
-FROM python:3.13-slim AS runtime
+# Base image with Python 3.13
+FROM python:3.13-slim AS base
+
+# Recommended environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV UV_SYSTEM_PYTHON=1
+
 WORKDIR /app
 
-# Dependencias del sistema
-RUN apt-get update && apt-get install -y \
+# Intall the requiered dependencies of the system 
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libjpeg-dev \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copia archivos de dependencias
-COPY pyproject.toml uv.lock* ./
+# Install uv and the dependencies of the project
+FROM base AS builder
+# Install uv
+RUN pip install --no-cache-dir uv
+# Copy the dependencies file
+COPY pyproject.toml .
+# Copy the lock file if exists
+COPY uv.lock* .
+# Install the dependencies of the project in the system's environment
+RUN uv pip install --system --no-cache .
 
-# Instala las dependencias
-RUN pip install --no-cache-dir .
-
-# Copia el código de la app
+# Copy the source code and prepare the execution environment
+FROM base AS runtime
+# Copy the installed dependencies
+COPY --from=builder /usr/local /usr/local
+# Copy the source code of the API, logic and home.html
 COPY api ./api
 COPY mylib ./mylib
 COPY templates ./templates
 COPY best_model.onnx ./best_model.onnx
 COPY labels.json ./labels.json
-
+# Expose the port associated with the API created with FastAPI
 EXPOSE 8000
+# Default command: it starts the API with uvicorn
 CMD ["uvicorn", "api.fastapi_main:app", "--host", "0.0.0.0", "--port", "8000"]
