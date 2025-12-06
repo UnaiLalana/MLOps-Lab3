@@ -7,9 +7,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from mylib import model
 
-def test_predict_cat():
-    image = model.Image.new('RGB', (100, 100))
-    assert model.predict(image) in ["cat", "dog", "bird"]
+from PIL import Image
+import json
+
+with open("labels.json", "r") as f:
+    class_labels = json.load(f)
+
+def test_predict_on_real_image():
+    image = Image.new('RGB', (100, 100))
+    pred = model.predict(image)
+    assert pred in class_labels
+
 
 def test_resize_image():
     image = model.Image.new('RGB', (100, 100))
