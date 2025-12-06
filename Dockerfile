@@ -35,6 +35,7 @@ COPY api ./api
 COPY mylib ./mylib
 COPY templates ./templates
 COPY best_model.onnx ./best_model.onnx
+COPY best_model.onnx.data ./best_model.onnx.data
 COPY labels.json ./labels.json
 # Expose the port associated with the API created with FastAPI
 EXPOSE 8000
