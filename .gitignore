@@ -5,4 +5,3 @@
 /data
 /mlruns
 mlflow.db
-best_model.onnx.data
