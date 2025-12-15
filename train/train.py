@@ -119,52 +119,81 @@ def main():
     set_seed(args.seed)
 
     mlflow.set_experiment(args.experiment_name)
-    run_name = args.run_name or f"mobilenet_bs{args.batch_size}_lr{args.lr}"
+    experiment = mlflow.get_experiment_by_name(args.experiment_name)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Define configurations to run
+    # You can add more configurations here
+    configs = [
+        {"epochs": 1, "lr": 1e-3},
+        {"epochs": 3, "lr": 1e-3},
+        {"epochs": 3, "lr": 5e-4},
+    ]
 
-    train_loader, val_loader, classes = build_dataloaders(
-        images_dir=args.data_dir,
-        batch_size=args.batch_size,
-        seed=args.seed,
-    )
+    for conf in configs:
+        # Override args with config values if acceptable, or just use config values directly
+        current_epochs = conf["epochs"]
+        current_lr = conf["lr"]
+        
+        # Construct a unique run name
+        run_name = f"mobilenet_bs{args.batch_size}_lr{current_lr}_ep{current_epochs}"
 
+        # Check if run exists
+        existing_runs = mlflow.search_runs(
+            experiment_ids=[experiment.experiment_id],
+            filter_string=f"tags.mlflow.runName = '{run_name}'",
+            run_view_type=mlflow.entities.ViewType.ACTIVE_ONLY
+        )
+        
+        if not existing_runs.empty:
+            print(f"⚠️ Run '{run_name}' already exists. Skipping...")
+            continue
+            
+        print(f"🚀 Starting run: {run_name}")
 
-    model = build_mobilenet_v2(len(classes))
-    model.to(device)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    with mlflow.start_run(run_name=run_name):
-        mlflow.log_params({
-            "model": "mobilenet_v2",
-            "epochs": args.epochs,
-            "batch_size": args.batch_size,
-            "lr": args.lr,
-            "seed": args.seed,
-            "num_classes": len(classes),
-            "dataset": "Oxford-IIIT Pet"
-        })
-
-        history = train(
-            model,
-            train_loader,
-            val_loader,
-            args.epochs,
-            args.lr,
-            device,
+        # Re-build dataloaders/model to ensure clean state (especially model weights)
+        train_loader, val_loader, classes = build_dataloaders(
+            images_dir=args.data_dir,
+            batch_size=args.batch_size,
+            seed=args.seed,
         )
 
-        with open("labels.json", "w") as f:
-            json.dump(classes, f)
+        model = build_mobilenet_v2(len(classes))
+        model.to(device)
 
-        mlflow.log_artifact("labels.json")
-        mlflow.log_metric("final_train_acc", history["train_acc"][-1])
-        mlflow.log_metric("final_val_acc", history["val_acc"][-1])
+        with mlflow.start_run(run_name=run_name):
+            mlflow.log_params({
+                "model": "mobilenet_v2",
+                "epochs": current_epochs,
+                "batch_size": args.batch_size,
+                "lr": current_lr,
+                "seed": args.seed,
+                "num_classes": len(classes),
+                "dataset": "Oxford-IIIT Pet"
+            })
 
-        mlflow.pytorch.log_model(
-            model,
-            artifact_path="model",
-            registered_model_name=args.registered_model_name
-        )
+            history = train(
+                model,
+                train_loader,
+                val_loader,
+                current_epochs,
+                current_lr,
+                device,
+            )
+
+            with open("labels.json", "w") as f:
+                json.dump(classes, f)
+
+            mlflow.log_artifact("labels.json")
+            mlflow.log_metric("final_train_acc", history["train_acc"][-1])
+            mlflow.log_metric("final_val_acc", history["val_acc"][-1])
+
+            mlflow.pytorch.log_model(
+                model,
+                artifact_path="model",
+                registered_model_name=args.registered_model_name
+            )
 
     print("✅ Training finished")
 
